@@ -208,6 +208,68 @@ defmodule Bincode do
     end
   end
 
+  # Tuple
+  max_tuple_size = Application.get_env(:bincode, :max_tuple_size) || 12
+
+  for size <- 1..max_tuple_size do
+    type_variables =
+      for i <- 1..size do
+        field_type = String.to_atom("tuple_type_#{i}")
+        quote do: var!(unquote(Macro.var(field_type, __MODULE__)))
+      end
+
+    value_variables =
+      for i <- 1..size do
+        field_value = String.to_atom("tuple_field_#{i}")
+        quote do: var!(unquote(Macro.var(field_value, __MODULE__)))
+      end
+
+    def serialize({unquote_splicing(value_variables)}, {unquote_splicing(type_variables)}) do
+      serialized_fields =
+        Enum.reduce_while(
+          Enum.zip([unquote_splicing(value_variables)], [unquote_splicing(type_variables)]),
+          [],
+          fn {value_var, type_var}, result ->
+            case serialize(value_var, type_var) do
+              {:ok, serialized} -> {:cont, [result, serialized]}
+              {:error, msg} -> {:halt, {:error, msg}}
+            end
+          end
+        )
+
+      case serialized_fields do
+        {:error, msg} ->
+          {:error, msg}
+
+        _ ->
+          {:ok, IO.iodata_to_binary(serialized_fields)}
+      end
+    end
+
+    def deserialize(<<rest::binary>>, {unquote_splicing(type_variables)}) do
+      deserialized_fields =
+        Enum.reduce_while(
+          [unquote_splicing(type_variables)],
+          {[], rest},
+          fn type_var, {fields, rest} ->
+            case deserialize(rest, type_var) do
+              {:ok, {deserialized, rest}} -> {:cont, {[deserialized | fields], rest}}
+              {:error, msg} -> {:halt, {:error, msg}}
+            end
+          end
+        )
+
+      case deserialized_fields do
+        {:error, msg} ->
+          {:error, msg}
+
+        {fields, rest} ->
+          tuple = Enum.reverse(fields) |> List.to_tuple()
+          {:ok, {tuple, rest}}
+      end
+    end
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
