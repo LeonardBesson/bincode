@@ -122,6 +122,57 @@ defmodule Bincode do
     end
   end
 
+  # Map
+  def serialize(map, {:map, {key_type, value_type}}) when is_map(map) do
+    serialize(map, Map.keys(map), 0, <<>>, {:map, {key_type, value_type}})
+  end
+
+  defp serialize(map, [], length, result, {:map, {key_type, value_type}}) do
+    {:ok, <<length::little-integer-size(64), IO.iodata_to_binary(result)::binary>>}
+  end
+
+  defp serialize(map, [key | keys], length, result, {:map, {key_type, value_type}}) do
+    case serialize(key, key_type) do
+      {:ok, serialized_key} ->
+        case serialize(map[key], value_type) do
+          {:ok, serialized_value} ->
+            result = [result, serialized_key, serialized_value]
+            serialize(map, keys, length + 1, result, {:map, {key_type, value_type}})
+
+          {:error, msg} ->
+            {:error, msg}
+        end
+
+      {:error, msg} ->
+        {:error, msg}
+    end
+  end
+
+  def deserialize(<<size::little-integer-size(64), rest::binary>>, {:map, {key_type, value_type}}) do
+    deserialize(rest, size, %{}, {:map, {key_type, value_type}})
+  end
+
+  defp deserialize(rest, 0, result, {:map, {_, _}}) do
+    {:ok, {result, rest}}
+  end
+
+  defp deserialize(rest, remaining, result, {:map, {key_type, value_type}}) do
+    case deserialize(rest, key_type) do
+      {:ok, {deserialized_key, rest}} ->
+        case deserialize(rest, value_type) do
+          {:ok, {deserialized_value, rest}} ->
+            result = Map.put(result, deserialized_key, deserialized_value)
+            deserialize(rest, remaining - 1, result, {:map, {key_type, value_type}})
+
+          {:error, msg} ->
+            {:error, msg}
+        end
+
+      {:error, msg} ->
+        {:error, msg}
+    end
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
