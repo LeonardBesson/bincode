@@ -70,6 +70,18 @@ defmodule Bincode do
     end
   end
 
+  # String
+  def serialize(value, :string) when is_binary(value) do
+    {:ok, <<byte_size(value)::little-integer-size(64), value::binary>>}
+  end
+
+  def deserialize(
+        <<string_size::little-integer-size(64), content::binary-size(string_size), rest::binary>>,
+        :string
+      ) do
+    {:ok, {content, rest}}
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
