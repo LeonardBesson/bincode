@@ -185,6 +185,29 @@ defmodule Bincode do
     end
   end
 
+  # Option
+  def serialize(nil, {:option, _}) do
+    {:ok, <<0>>}
+  end
+
+  def serialize(value, {:option, inner}) do
+    case serialize(value, inner) do
+      {:ok, serialized} -> {:ok, <<1::size(8), serialized::binary>>}
+      {:error, msg} -> {:error, msg}
+    end
+  end
+
+  def deserialize(<<0::size(8), rest::binary>>, {:option, _}) do
+    {:ok, {nil, rest}}
+  end
+
+  def deserialize(<<1::size(8), rest::binary>>, {:option, inner}) do
+    case deserialize(rest, inner) do
+      {:ok, {deserialized, rest}} -> {:ok, {deserialized, rest}}
+      {:error, msg} -> {:error, msg}
+    end
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
