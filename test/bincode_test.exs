@@ -138,4 +138,14 @@ defmodule BincodeTest do
     test_serialization_fail(3, 23, :f64)
     test_serialization_fail(false, true, :f64)
   end
+
+  describe "booleans" do
+    test_serialization(true, <<1::size(8)>>, :bool)
+    test_serialization(false, <<0::size(8)>>, :bool)
+
+    test_serialization_fail("", "", :bool)
+    test_serialization_fail([], [], :bool)
+    test_serialization_fail(1, 1, :bool)
+    test_serialization_fail({}, {}, :bool)
+  end
 end

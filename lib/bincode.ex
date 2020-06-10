@@ -57,6 +57,19 @@ defmodule Bincode do
     end
   end
 
+  # Bool
+  for boolean <- [true, false] do
+    v = if boolean, do: 1, else: 0
+
+    def serialize(unquote(boolean), :bool) do
+      {:ok, <<unquote(v)::size(8)>>}
+    end
+
+    def deserialize(<<unquote(v)::size(8), rest::binary>>, :bool) do
+      {:ok, {unquote(boolean), rest}}
+    end
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
