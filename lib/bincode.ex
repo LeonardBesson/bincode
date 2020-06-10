@@ -3,16 +3,48 @@ defmodule Bincode do
   Documentation for `Bincode`.
   """
 
-  @doc """
-  Hello world.
+  # Unsigned
+  for int_type <- [:u8, :u16, :u32, :u64, :u128] do
+    {size, ""} = to_string(int_type) |> String.trim_leading("u") |> Integer.parse()
 
-  ## Examples
+    def serialize(value, unquote(int_type)) when value < 0 do
+      raise ArgumentError,
+        message:
+          "Attempt to serialize negative integer #{inspect(value)} into #{unquote(int_type)}"
+    end
 
-      iex> Bincode.hello()
-      :world
+    def serialize(value, unquote(int_type)) when is_integer(value) do
+      {:ok, <<value::little-integer-size(unquote(size))>>}
+    end
 
-  """
-  def hello do
-    :world
+    def deserialize(
+          <<value::little-integer-size(unquote(size)), rest::binary>>,
+          unquote(int_type)
+        ) do
+      {:ok, {value, rest}}
+    end
+  end
+
+  # Fallback
+  def serialize(value, type) do
+    {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
+  end
+
+  def serialize!(value, type) do
+    case serialize(value, type) do
+      {:ok, result} -> result
+      {:error, message} -> raise ArgumentError, message: message
+    end
+  end
+
+  def deserialize(value, type) do
+    {:error, "Cannot deserialize value #{inspect(value)} into type #{inspect(type)}"}
+  end
+
+  def deserialize!(value, type) do
+    case deserialize(value, type) do
+      {:ok, result} -> result
+      {:error, message} -> raise ArgumentError, message: message
+    end
   end
 end
