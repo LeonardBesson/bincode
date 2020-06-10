@@ -41,6 +41,22 @@ defmodule Bincode do
     end
   end
 
+  # Float
+  for float_type <- [:f32, :f64] do
+    {size, ""} = to_string(float_type) |> String.trim_leading("f") |> Integer.parse()
+
+    def serialize(value, unquote(float_type)) when is_float(value) do
+      {:ok, <<value::little-float-size(unquote(size))>>}
+    end
+
+    def deserialize(
+          <<value::little-float-size(unquote(size)), rest::binary>>,
+          unquote(float_type)
+        ) do
+      {:ok, {value, rest}}
+    end
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
