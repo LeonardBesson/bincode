@@ -173,6 +173,18 @@ defmodule Bincode do
     end
   end
 
+  # Set
+  def serialize(%MapSet{} = set, {:set, inner}) do
+    serialize(MapSet.to_list(set), {:list, inner})
+  end
+
+  def deserialize(<<rest::binary>>, {:set, inner}) do
+    case deserialize(rest, {:list, inner}) do
+      {:ok, {list, rest}} -> {:ok, {MapSet.new(list), rest}}
+      {:error, msg} -> {:error, msg}
+    end
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
