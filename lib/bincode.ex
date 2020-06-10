@@ -82,6 +82,46 @@ defmodule Bincode do
     {:ok, {content, rest}}
   end
 
+  # List
+  def serialize(list, {:list, inner}) when is_list(list) do
+    serialize(list, 0, <<>>, {:list, inner})
+  end
+
+  defp serialize([], length, result, {:list, inner}) do
+    {:ok, <<length::little-integer-size(64), IO.iodata_to_binary(result)::binary>>}
+  end
+
+  defp serialize([head | tail], length, result, {:list, inner}) do
+    case serialize(head, inner) do
+      {:ok, serialized} ->
+        result = [result, serialized]
+        serialize(tail, length + 1, result, {:list, inner})
+
+      {:error, msg} ->
+        {:error, msg}
+    end
+  end
+
+  def deserialize(<<size::little-integer-size(64), rest::binary>>, {:list, inner}) do
+    deserialize(rest, size, [], {:list, inner})
+  end
+
+  defp deserialize(rest, 0, result, {:list, _}) do
+    result = Enum.reverse(result)
+    {:ok, {result, rest}}
+  end
+
+  defp deserialize(rest, remaining, result, {:list, inner}) do
+    case deserialize(rest, inner) do
+      {:ok, {deserialized, rest}} ->
+        result = [deserialized | result]
+        deserialize(rest, remaining - 1, result, {:list, inner})
+
+      {:error, msg} ->
+        {:error, msg}
+    end
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
