@@ -3,7 +3,7 @@ defmodule Bincode.TestUtils do
   Utilities to remove boilerplate in tests
   """
   defmacro test_serialization(input, output, type) do
-    title = "#{type} serialization (#{inspect(input)} <-> #{inspect(output)})"
+    title = "#{type} serialization (#{inspect(input)})"
 
     quote do
       test unquote(title) do
@@ -15,7 +15,7 @@ defmodule Bincode.TestUtils do
   end
 
   defmacro test_serialization_fail(input, output, type) do
-    title = "#{type} serialization fail (#{inspect(input)}, #{inspect(output)})"
+    title = "#{type} serialization fail (#{inspect(input)})"
 
     quote do
       test unquote(title) do

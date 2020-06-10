@@ -25,6 +25,22 @@ defmodule Bincode do
     end
   end
 
+  # Signed
+  for int_type <- [:i8, :i16, :i32, :i64, :i128] do
+    {size, ""} = to_string(int_type) |> String.trim_leading("i") |> Integer.parse()
+
+    def serialize(value, unquote(int_type)) when is_integer(value) do
+      {:ok, <<value::little-integer-signed-size(unquote(size))>>}
+    end
+
+    def deserialize(
+          <<value::little-integer-signed-size(unquote(size)), rest::binary>>,
+          unquote(int_type)
+        ) do
+      {:ok, {value, rest}}
+    end
+  end
+
   # Fallback
   def serialize(value, type) do
     {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
