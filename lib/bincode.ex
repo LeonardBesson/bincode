@@ -2,6 +2,89 @@ defmodule Bincode do
   @moduledoc """
   Documentation for `Bincode`.
   """
+  # Struct
+  defmacro declare_struct(struct, fields) when is_list(fields) do
+    %Macro.Env{module: caller_module} = __CALLER__
+
+    struct_module = Module.concat([caller_module, Macro.expand(struct, __CALLER__)])
+    struct_data = for {field_name, _} <- fields, do: {field_name, nil}
+    field_names = for {field_name, _} <- fields, do: field_name
+    field_types = for {_, field_type} <- fields, do: field_type
+
+    types =
+      for type <- field_types do
+        case type do
+          # This field is a struct
+          {:__aliases__, _, _} -> Macro.expand(type, __CALLER__)
+          _ -> type
+        end
+      end
+
+    value_variables =
+      for {field_name, _} <- fields do
+        quote do: var!(struct).unquote(Macro.var(field_name, nil))
+      end
+
+    quote do
+      defmodule unquote(struct_module) do
+        defstruct unquote(struct_data)
+
+        def serialize(%__MODULE__{} = var!(struct)) do
+          serialized_fields =
+            Enum.reduce_while(
+              Enum.zip([unquote_splicing(value_variables)], [unquote_splicing(types)]),
+              [],
+              fn {value_var, type_var}, result ->
+                case Bincode.serialize(value_var, type_var) do
+                  {:ok, serialized} -> {:cont, [result, serialized]}
+                  {:error, msg} -> {:halt, {:error, msg}}
+                end
+              end
+            )
+
+          case serialized_fields do
+            {:error, msg} ->
+              {:error, msg}
+
+            _ ->
+              {:ok, IO.iodata_to_binary(serialized_fields)}
+          end
+        end
+
+        def deserialize(<<rest::binary>>) do
+          deserialized_fields =
+            Enum.reduce_while(
+              Enum.zip([unquote_splicing(field_names)], [unquote_splicing(types)]),
+              {[], rest},
+              fn {field_name, type}, {fields, rest} ->
+                case Bincode.deserialize(rest, type) do
+                  {:ok, {deserialized, rest}} ->
+                    {:cont, {[{field_name, deserialized} | fields], rest}}
+
+                  {:error, msg} ->
+                    {:halt, {:error, msg}}
+                end
+              end
+            )
+
+          case deserialized_fields do
+            {:error, msg} ->
+              {:error, msg}
+
+            {fields, rest} ->
+              struct = struct!(unquote(struct_module), fields)
+              {:ok, {struct, rest}}
+          end
+        end
+      end
+
+      defimpl Bincode.Serializer, for: unquote(struct_module) do
+        def serialize(term) do
+          unquote(struct_module).serialize(term)
+        end
+      end
+    end
+  end
 
   # Unsigned
   for int_type <- [:u8, :u16, :u32, :u64, :u128] do
@@ -272,7 +355,11 @@ defmodule Bincode do
 
   # Fallback
   def serialize(value, type) do
-    {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
+    if is_atom(type) and function_exported?(type, :serialize, 1) do
+      apply(type, :serialize, [value])
+    else
+      {:error, "Cannot serialize value #{inspect(value)} into type #{inspect(type)}"}
+    end
   end
 
   def serialize!(value, type) do
@@ -283,7 +370,11 @@ defmodule Bincode do
   end
 
   def deserialize(value, type) do
-    {:error, "Cannot deserialize value #{inspect(value)} into type #{inspect(type)}"}
+    if is_atom(type) and function_exported?(type, :deserialize, 1) do
+      apply(type, :deserialize, [value])
+    else
+      {:error, "Cannot deserialize value #{inspect(value)} into type #{inspect(type)}"}
+    end
   end
 
   def deserialize!(value, type) do

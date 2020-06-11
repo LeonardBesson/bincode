@@ -20,7 +20,18 @@ defmodule Bincode.TestUtils do
         assert {:error, _} = Bincode.serialize(unquote(input), unquote(type))
         assert_raise(ArgumentError, fn -> Bincode.serialize!(unquote(input), unquote(type)) end)
         assert {:error, _} = Bincode.deserialize(unquote(output), unquote(type))
+
         assert_raise(ArgumentError, fn -> Bincode.deserialize!(unquote(output), unquote(type)) end)
+      end
+    end
+  end
+
+  defmacro test_struct_serialization(struct, binary) do
+    quote do
+      test to_string(unquote(struct).__struct__) do
+        struct_module = unquote(struct).__struct__
+        assert {:ok, unquote(binary)} = struct_module.serialize(unquote(struct))
+        assert {:ok, {unquote(struct), ""}} = struct_module.deserialize(unquote(binary))
       end
     end
   end
