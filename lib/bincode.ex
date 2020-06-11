@@ -3,7 +3,7 @@ defmodule Bincode do
   Documentation for `Bincode`.
   """
   # Struct
-  defmacro declare_struct(struct, fields) when is_list(fields) do
+  defmacro declare_struct(struct, fields, options \\ []) when is_list(fields) do
     %Macro.Env{module: caller_module} = __CALLER__
 
     struct_module = Module.concat([caller_module, Macro.expand(struct, __CALLER__)])
@@ -25,6 +25,8 @@ defmodule Bincode do
         quote do: var!(struct).unquote(Macro.var(field_name, nil))
       end
 
+    prefix = Keyword.get(options, :prefix, <<>>)
+
     quote do
       defmodule unquote(struct_module) do
         defstruct unquote(struct_data)
@@ -33,9 +35,9 @@ defmodule Bincode do
           serialized_fields =
             Enum.reduce_while(
               Enum.zip([unquote_splicing(value_variables)], [unquote_splicing(types)]),
-              [],
-              fn {value_var, type_var}, result ->
-                case Bincode.serialize(value_var, type_var) do
+              [unquote(prefix)],
+              fn {value_var, type}, result ->
+                case Bincode.serialize(value_var, type) do
                   {:ok, serialized} -> {:cont, [result, serialized]}
                   {:error, msg} -> {:halt, {:error, msg}}
                 end
@@ -51,7 +53,12 @@ defmodule Bincode do
           end
         end
 
-        def deserialize(<<rest::binary>>) do
+        def serialize(value) do
+          {:error,
+           "Cannot serialize value #{inspect(value)} into struct #{unquote(struct_module)}"}
+        end
+
+        def deserialize(<<unquote(prefix), rest::binary>>) do
           deserialized_fields =
             Enum.reduce_while(
               Enum.zip([unquote_splicing(field_names)], [unquote_splicing(types)]),
@@ -76,11 +83,65 @@ defmodule Bincode do
               {:ok, {struct, rest}}
           end
         end
+
+        def deserialize(data) do
+          {:error,
+           "Cannot deserialize value #{inspect(data)} into struct #{unquote(struct_module)}"}
+        end
       end
 
       defimpl Bincode.Serializer, for: unquote(struct_module) do
         def serialize(term) do
           unquote(struct_module).serialize(term)
+        end
+      end
+    end
+  end
+
+  # Enum
+  defmacro declare_enum(enum, variants) when is_list(variants) do
+    %Macro.Env{module: caller_module} = __CALLER__
+
+    enum_module = Module.concat([caller_module, Macro.expand(enum, __CALLER__)])
+
+    quote do
+      defmodule unquote(enum_module) do
+        unquote do
+          variants_definition =
+            for {{variant, fields}, i} <- Enum.with_index(variants) do
+              serialized_variant = <<i::little-integer-size(32)>>
+              variant_module = Module.concat([enum_module, Macro.expand(variant, __CALLER__)])
+
+              quote do
+                Bincode.declare_struct(
+                  unquote(variant),
+                  unquote(fields),
+                  prefix: unquote(serialized_variant)
+                )
+
+                def serialize(%unquote(variant_module){} = variant) do
+                  unquote(variant_module).serialize(variant)
+                end
+
+                def deserialize(<<unquote(serialized_variant), _::binary>> = data) do
+                  unquote(variant_module).deserialize(data)
+                end
+              end
+            end
+
+          quote do
+            unquote(variants_definition)
+
+            def serialize(value) do
+              {:error,
+               "Cannot serialize variant #{inspect(value)} into enum #{unquote(enum_module)}"}
+            end
+
+            def deserialize(data) do
+              {:error,
+               "Cannot deserialize #{inspect(data)} into enum #{unquote(enum_module)} variant"}
+            end
+          end
         end
       end
     end
@@ -170,7 +231,7 @@ defmodule Bincode do
     serialize(list, 0, <<>>, {:list, inner})
   end
 
-  defp serialize([], length, result, {:list, inner}) do
+  defp serialize([], length, result, {:list, _inner}) do
     {:ok, <<length::little-integer-size(64), IO.iodata_to_binary(result)::binary>>}
   end
 
@@ -210,7 +271,7 @@ defmodule Bincode do
     serialize(map, Map.keys(map), 0, <<>>, {:map, {key_type, value_type}})
   end
 
-  defp serialize(map, [], length, result, {:map, {key_type, value_type}}) do
+  defp serialize(_map, [], length, result, {:map, {_, _}}) do
     {:ok, <<length::little-integer-size(64), IO.iodata_to_binary(result)::binary>>}
   end
 

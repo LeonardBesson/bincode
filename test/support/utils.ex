@@ -28,10 +28,30 @@ defmodule Bincode.TestUtils do
 
   defmacro test_struct_serialization(struct, binary) do
     quote do
-      test to_string(unquote(struct).__struct__) do
+      test "#{to_string(unquote(struct).__struct__)} (#{inspect(unquote(binary))})" do
         struct_module = unquote(struct).__struct__
-        assert {:ok, unquote(binary)} = struct_module.serialize(unquote(struct))
-        assert {:ok, {unquote(struct), ""}} = struct_module.deserialize(unquote(binary))
+        assert {:ok, unquote(binary)} = Bincode.serialize(unquote(struct), struct_module)
+        assert Bincode.serialize!(unquote(struct), struct_module) == unquote(binary)
+        assert {:ok, {unquote(struct), ""}} = Bincode.deserialize(unquote(binary), struct_module)
+        assert {unquote(struct), ""} = Bincode.deserialize!(unquote(binary), struct_module)
+      end
+    end
+  end
+
+  defmacro test_struct_serialization_fail(struct_module, input, output) do
+    quote do
+      test "#{to_string(unquote(struct_module))} fail (#{inspect(unquote(input))})" do
+        assert {:error, _} = Bincode.serialize(unquote(input), unquote(struct_module))
+
+        assert_raise(ArgumentError, fn ->
+          Bincode.serialize!(unquote(input), unquote(struct_module))
+        end)
+
+        assert {:error, _} = Bincode.deserialize(unquote(output), unquote(struct_module))
+
+        assert_raise(ArgumentError, fn ->
+          Bincode.deserialize!(unquote(output), unquote(struct_module))
+        end)
       end
     end
   end

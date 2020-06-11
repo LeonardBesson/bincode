@@ -2,6 +2,8 @@ defmodule Bincode.StructTest do
   use Bincode.BaseCase, async: true
   alias Bincode.TestStructs.CompositeStruct
   alias Bincode.TestStructs.SimpleStruct
+  alias Bincode.TestStructs.StructWithEnum
+  alias Bincode.TestStructs.SomeEnum
   alias Bincode.TestStructs.NestedStruct
 
   test_struct_serialization(
@@ -14,6 +16,38 @@ defmodule Bincode.StructTest do
       114, 117, 99, 116, 4, 0, 0, 0, 0, 0, 0, 0, 11, 22, 33, 44, 35, 122, 8, 0, 0, 0, 0, 0, 0, 0,
       0, 0, 0>>
   )
+
+  test_struct_serialization_fail(SimpleStruct, [], [])
+  test_struct_serialization_fail(SimpleStruct, true, false)
+  test_struct_serialization_fail(SimpleStruct, {}, 1..14)
+
+  # Since SomeEnum isn't referenced directly it seems to be
+  # removed (or  when the project is recompiled for the second
+  # time when running tests. Adding this line re-loads it
+  # TODO:
+  Code.ensure_loaded(SomeEnum)
+
+  test_struct_serialization(
+    %StructWithEnum{an_enum: %SomeEnum.VariantA{}},
+    <<0, 0, 0, 0>>
+  )
+
+  test_struct_serialization(
+    %StructWithEnum{
+      an_enum: %SomeEnum.VariantB{tuple: {87_653_213, 303_213.123873, "Variant B!"}}
+    },
+    <<1, 0, 0, 0, 93, 123, 57, 5, 79, 144, 216, 126, 180, 129, 18, 65, 10, 0, 0, 0, 0, 0, 0, 0,
+      86, 97, 114, 105, 97, 110, 116, 32, 66, 33>>
+  )
+
+  test_struct_serialization(
+    %StructWithEnum{an_enum: %SomeEnum.VariantC{a_byte: 255, a_string: "Variant C"}},
+    <<2, 0, 0, 0, 255, 9, 0, 0, 0, 0, 0, 0, 0, 86, 97, 114, 105, 97, 110, 116, 32, 67>>
+  )
+
+  test_struct_serialization_fail(StructWithEnum, [], [])
+  test_struct_serialization_fail(StructWithEnum, true, false)
+  test_struct_serialization_fail(StructWithEnum, {}, 1..14)
 
   test_struct_serialization(
     %NestedStruct{
@@ -28,6 +62,10 @@ defmodule Bincode.StructTest do
       116, 114, 117, 99, 116, 4, 0, 0, 0, 0, 0, 0, 0, 11, 22, 33, 44, 35, 122, 8, 0, 0, 0, 0, 0,
       0, 0, 0, 0, 0>>
   )
+
+  test_struct_serialization_fail(NestedStruct, [1, 2, 3], [])
+  test_struct_serialization_fail(NestedStruct, "", false)
+  test_struct_serialization_fail(NestedStruct, {}, %{})
 
   test_struct_serialization(
     %CompositeStruct{
@@ -70,4 +108,8 @@ defmodule Bincode.StructTest do
       114, 108, 100, 8, 0, 0, 0, 0, 0, 0, 0, 11, 22, 33, 44, 55, 66, 77, 88, 146, 154, 6, 0, 15,
       0, 0, 0, 0, 0, 0, 0, 45, 45, 49, 39, 91, 46, 96, 96, 96, 96, 46, 59, 59, 46, 47, 0>>
   )
+
+  test_struct_serialization_fail(CompositeStruct, %{}, %{})
+  test_struct_serialization_fail(CompositeStruct, {"", false}, 890)
+  test_struct_serialization_fail(CompositeStruct, 0x32, [[], []])
 end
