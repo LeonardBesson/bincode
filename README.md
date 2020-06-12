@@ -1,6 +1,21 @@
 # Bincode
 
-![](https://github.com/LeonardBesson/bincode/workflows/ci/badge.svg)
+<p align="center">
+  <a href="https://hex.pm/packages/bincode">
+    <img alt="Hex Version" src="https://img.shields.io/hexpm/v/bincode.svg">
+  </a>
+  <a href="https://hexdocs.pm/bincode">
+    <img alt="Hex Docs" src="http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat">
+  </a>
+</p>
+<p align="center">
+  <a href="https://github.com/LeonardBesson/bincode/actions">
+    <img alt="CI" src="https://github.com/LeonardBesson/bincode/workflows/ci/badge.svg">
+  </a>
+  <a href="https://opensource.org/licenses/MIT">
+    <img alt="MIT License" src="https://img.shields.io/hexpm/l/bincode">
+  </a>
+</p>
 
 Bincode allows you to share data between Elixir and Rust using
   Rust's [Bincode](https://github.com/servo/bincode) binary format.
