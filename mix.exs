@@ -12,7 +12,8 @@ defmodule Bincode.MixProject do
       package: package(),
       deps: deps(),
       name: "Bincode",
-      source_url: "https://github.com/LeonardBesson/bincode"
+      source_url: "https://github.com/LeonardBesson/bincode",
+      docs: [main: "Bincode"]
     ]
   end
 
