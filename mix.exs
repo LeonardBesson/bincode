@@ -4,7 +4,7 @@ defmodule Bincode.MixProject do
   def project do
     [
       app: :bincode,
-      version: "0.1.0",
+      version: "0.2.0",
       elixir: "~> 1.10",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
