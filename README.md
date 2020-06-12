@@ -46,6 +46,9 @@ Bincode allows you to share data between Elixir and Rust using
   | `HashMap<i64, String>` | `{:map, {:i64, :string}}` | `%{required(integer) => binary}` |
   | `HashSet<u8>`          | `{:set, :u8}`             | `MapSet.t(non_neg_integer)`      |
 
+  User defined types such as structs and enums can be nested, in this case the type is
+  the fully qualified module name. See documentation for `Bincode.declare_struct/3`.
+
   The endianness is little since that's the default used by Bincode.
   Tuples are implemented for a max size of 12 by default. That should be enough for
   most practical cases but if you need to serialize tuples with more elements you can

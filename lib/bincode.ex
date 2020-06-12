@@ -31,6 +31,9 @@ defmodule Bincode do
   | `HashMap<i64, String>` | `{:map, {:i64, :string}}` | `%{required(integer) => binary}` |
   | `HashSet<u8>`          | `{:set, :u8}`             | `MapSet.t(non_neg_integer)`      |
 
+  User defined types such as structs and enums can be nested, in this case the type is
+  the fully qualified module name. See `Bincode.declare_struct/3`.
+
   The endianness is little since that's the default used by Bincode.
   Tuples are implemented for a max size of 12 by default. That should be enough for
   most practical cases but if you need to serialize tuples with more elements you can
@@ -120,6 +123,23 @@ defmodule Bincode do
   It's also possible to call `serialize` and `deserialize` from the struct module directly.
 
       {:ok, {%Person{age: 44, first_name: "John", last_name: "Doe"}, ""}} = Person.deserialize(<<4, 0, 0, 0, 0, 0, 0, 0, 74, 111, 104, 110, 3, 0, 0, 0, 0, 0, 0, 0, 68, 111, 101, 44>>)
+
+  Structs and enums can be nested. In this case the type is the fully qualified module. For example:
+      defmodule MyStructs do
+        import Bincode
+
+        declare_struct(Person,
+          first_name: :string,
+          last_name: :string,
+          age: :u8
+        )
+
+        declare_struct(Employee,
+          employee_number: :u64,
+          person: MyStructs.Person,
+          job_title: :string,
+        )
+      end
   """
   defmacro declare_struct(struct, fields, options \\ []) when is_list(fields) do
     %Macro.Env{module: caller_module} = __CALLER__
@@ -269,6 +289,8 @@ defmodule Bincode do
 
       {:ok, {%IpAddr.V4{tuple: {127, 0, 0, 1}}, ""}} = IpAddr.deserialize(<<0, 0, 0, 0, 127, 0, 0, 1>>)
       {:ok, {%IpAddr.V6{addr: "::1"}, ""}} = IpAddr.deserialize(<<1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 58, 58, 49>>)
+
+  Enums can be nested and contain structs. See `Bincode.declare_struct/3`.
   """
   defmacro declare_enum(enum, variants, options \\ []) when is_list(variants) do
     %Macro.Env{module: caller_module} = __CALLER__
