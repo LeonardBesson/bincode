@@ -6,7 +6,13 @@ defmodule Bincode do
   defmacro declare_struct(struct, fields, options \\ []) when is_list(fields) do
     %Macro.Env{module: caller_module} = __CALLER__
 
-    struct_module = Module.concat([caller_module, Macro.expand(struct, __CALLER__)])
+    struct_module =
+      if Keyword.get(options, :absolute, false) do
+        Macro.expand(struct, __CALLER__)
+      else
+        Module.concat([caller_module, Macro.expand(struct, __CALLER__)])
+      end
+
     struct_data = for {field_name, _} <- fields, do: {field_name, nil}
     field_names = for {field_name, _} <- fields, do: field_name
     field_types = for {_, field_type} <- fields, do: field_type
@@ -58,6 +64,13 @@ defmodule Bincode do
            "Cannot serialize value #{inspect(value)} into struct #{unquote(struct_module)}"}
         end
 
+        def serialize!(value) do
+          case serialize(value) do
+            {:ok, result} -> result
+            {:error, message} -> raise ArgumentError, message: message
+          end
+        end
+
         def deserialize(<<unquote(prefix), rest::binary>>) do
           deserialized_fields =
             Enum.reduce_while(
@@ -88,6 +101,13 @@ defmodule Bincode do
           {:error,
            "Cannot deserialize value #{inspect(data)} into struct #{unquote(struct_module)}"}
         end
+
+        def deserialize!(data) do
+          case deserialize(data) do
+            {:ok, result} -> result
+            {:error, message} -> raise ArgumentError, message: message
+          end
+        end
       end
 
       defimpl Bincode.Serializer, for: unquote(struct_module) do
@@ -99,10 +119,15 @@ defmodule Bincode do
   end
 
   # Enum
-  defmacro declare_enum(enum, variants) when is_list(variants) do
+  defmacro declare_enum(enum, variants, options \\ []) when is_list(variants) do
     %Macro.Env{module: caller_module} = __CALLER__
 
-    enum_module = Module.concat([caller_module, Macro.expand(enum, __CALLER__)])
+    enum_module =
+      if Keyword.get(options, :absolute, false) do
+        Macro.expand(enum, __CALLER__)
+      else
+        Module.concat([caller_module, Macro.expand(enum, __CALLER__)])
+      end
 
     quote do
       defmodule unquote(enum_module) do
@@ -137,9 +162,23 @@ defmodule Bincode do
                "Cannot serialize variant #{inspect(value)} into enum #{unquote(enum_module)}"}
             end
 
+            def serialize!(value) do
+              case serialize(value) do
+                {:ok, result} -> result
+                {:error, message} -> raise ArgumentError, message: message
+              end
+            end
+
             def deserialize(data) do
               {:error,
                "Cannot deserialize #{inspect(data)} into enum #{unquote(enum_module)} variant"}
+            end
+
+            def deserialize!(data) do
+              case deserialize(data) do
+                {:ok, result} -> result
+                {:error, message} -> raise ArgumentError, message: message
+              end
             end
           end
         end
@@ -431,7 +470,7 @@ defmodule Bincode do
   end
 
   def deserialize(value, type) do
-    if is_atom(type) and function_exported?(type, :deserialize, 1) do
+    if is_atom(type) and Code.ensure_loaded?(type) and function_exported?(type, :deserialize, 1) do
       apply(type, :deserialize, [value])
     else
       {:error, "Cannot deserialize value #{inspect(value)} into type #{inspect(type)}"}

@@ -21,12 +21,6 @@ defmodule Bincode.StructTest do
   test_struct_serialization_fail(SimpleStruct, true, false)
   test_struct_serialization_fail(SimpleStruct, {}, 1..14)
 
-  # Since SomeEnum isn't referenced directly it seems to be
-  # removed (or  when the project is recompiled for the second
-  # time when running tests. Adding this line re-loads it
-  # TODO:
-  Code.ensure_loaded(SomeEnum)
-
   test_struct_serialization(
     %StructWithEnum{an_enum: %SomeEnum.VariantA{}},
     <<0, 0, 0, 0>>

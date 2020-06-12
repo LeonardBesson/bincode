@@ -25,12 +25,6 @@ defmodule Bincode.EnumTest do
   test_struct_serialization_fail(SomeEnum, true, false)
   test_struct_serialization_fail(SomeEnum, {}, 1..14)
 
-  # Since SomeEnum isn't referenced directly it seems to be
-  # removed (or  when the project is recompiled for the second
-  # time when running tests. Adding this line re-loads it
-  # TODO:
-  Code.ensure_loaded(SomeEnum)
-
   test_struct_serialization(
     %NestedEnum.VariantA{an_enum: %SomeEnum.VariantC{a_byte: 1, a_string: "!"}},
     <<0, 0, 0, 0, 2, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 33>>
