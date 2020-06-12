@@ -1,6 +1,6 @@
 # Bincode
 
-<p align="center">
+<p>
   <a href="https://hex.pm/packages/bincode">
     <img alt="Hex Version" src="https://img.shields.io/hexpm/v/bincode.svg">
   </a>
@@ -8,7 +8,7 @@
     <img alt="Hex Docs" src="http://img.shields.io/badge/hex.pm-docs-green.svg?style=flat">
   </a>
 </p>
-<p align="center">
+<p>
   <a href="https://github.com/LeonardBesson/bincode/actions">
     <img alt="CI" src="https://github.com/LeonardBesson/bincode/workflows/ci/badge.svg">
   </a>
