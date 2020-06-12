@@ -1,8 +1,128 @@
 defmodule Bincode do
-  @moduledoc """
-  Documentation for `Bincode`.
+  @moduledoc ~S"""
+  Module defining the functionalities of Bincode.
+
+  Bincode allows you to share data between Elixir and Rust using
+  Rust's [Bincode](https://github.com/servo/bincode) binary format.
+
+  You can implement your custom serialization manually, but for most use cases
+  you can simply declare the Rust structs and enums using `Bincode.declare_struct/3` and
+  `Bincode.declare_enum/3`
+
+  ## Supported types
+
+  Most Rust types are supported, plus user defined structs and enums.
+
+  | Rust                   | Bincode notation          | Elixir typespec                  |
+  |------------------------|---------------------------|----------------------------------|
+  | `u8`                   | `:u8`                     | `non_neg_integer`                |
+  | ...                    | ...                       | ...                              |
+  | `u128`                 | `:u128`                   | `non_neg_integer`                |
+  | `i8`                   | `:i8`                     | `integer`                        |
+  | ...                    | ...                       | ...                              |
+  | `i128`                 | `:i128`                   | `integer`                        |
+  | `f32`                  | `:f32`                    | `float`                          |
+  | `f64`                  | `:f64`                    | `float`                          |
+  | `bool`                 | `:bool`                   | `boolean`                        |
+  | `String`               | `:string`                 | `binary`                         |
+  | `(u32, String)`        | `{:u32, :string}`         | `{non_neg_integer, binary}`      |
+  | `Option<f32>`          | `{:option, :f32}`         | `float \| nil`                   |
+  | `Vec<String>`          | `{:list, :string}`        | `[binary]`                       |
+  | `HashMap<i64, String>` | `{:map, {:i64, :string}}` | `%{required(integer) => binary}` |
+  | `HashSet<u8>`          | `{:set, :u8}`             | `MapSet.t(non_neg_integer)`      |
+
+  The endianness is little since that's the default used by Bincode.
+  Tuples are implemented for a max size of 12 by default. That should be enough for
+  most practical cases but if you need to serialize tuples with more elements you can
+  set `max_tuple_size` in the mix config, like so: `config :bincode, max_tuple_size: 23`.
+
+  ## Examples
+
+  Consider the typical example were we want to send data structures across the network.
+  Here with a Rust client and Elixir server:
+
+  ```rust
+  #[derive(Serialize, Deserialize)]
+  pub struct PacketSendMessage {
+    pub from: u64,
+    pub to: u64,
+    pub content: String,
+  }
+
+  pub fn send_message(sender_id: u64, receiver_id: u64) {
+    let message = PacketSendMessage {
+        from: sender_id,
+        to: receiver_id,
+        content: "hello!".to_owned()
+    };
+    let encoded: Vec<u8> = bincode::serialize(&message).unwrap();
+
+    // now send "encoded" to Elixir app
+  }
+  ```
+
+  On the Elixir side you can simply declare the same packet struct and deserialize the received data:
+
+      defmodule Packets do
+        import Bincode
+
+        declare_struct(PacketSendMessage,
+          from: :u64,
+          to: :u64,
+          content: :string
+        )
+      end
+
+      ...
+
+      alias Packets.PacketSendMessage
+
+      # Receive "data" from the network
+      {:ok, {%PacketSendMessage{} = message, rest}} = PacketSendMessage.deserialize(data)
+      Logger.info("Received message packet #{inspect(message)}")
+
   """
+
+  @type unsigned :: :u8 | :u16 | :u32 | :u64 | :u128
+  @type signed :: :i8 | :i16 | :i32 | :i64 | :i128
+  @type floating_point :: :f32 | :f64
+  @type primitive ::
+          unsigned | signed | floating_point | :bool | :string | tuple | {:option, bincode_type}
+  @type collection :: {:list, bincode_type} | {:map, bincode_type} | {:set, bincode_type}
+  @type user_defined :: module
+  @type bincode_type :: primitive | collection | user_defined
+
   # Struct
+  @doc """
+  Declares a new struct. This macro generates a struct with serialization and
+  deserialization methods according to the given fields.
+
+  ## Options
+
+  * `absolute` - When set to true, the given struct name is interpreted as the absolute module name.
+  When set to false, the given struct name is appended to the caller's module. Defaults to false.
+
+  ## Example
+
+      defmodule MyStructs do
+        import Bincode
+
+        declare_struct(Person,
+          first_name: :string,
+          last_name: :string,
+          age: :u8
+        )
+      end
+
+      alias MyStructs.Person
+
+      person = %Person{first_name: "John", last_name: "Doe", age: 44}
+      {:ok, <<4, 0, 0, 0, 0, 0, 0, 0, 74, 111, 104, 110, 3, 0, 0, 0, 0, 0, 0, 0, 68, 111, 101, 44>>} = Bincode.serialize(person, Person)
+
+  It's also possible to call `serialize` and `deserialize` from the struct module directly.
+
+      {:ok, {%Person{age: 44, first_name: "John", last_name: "Doe"}, ""}} = Person.deserialize(<<4, 0, 0, 0, 0, 0, 0, 0, 74, 111, 104, 110, 3, 0, 0, 0, 0, 0, 0, 0, 68, 111, 101, 44>>)
+  """
   defmacro declare_struct(struct, fields, options \\ []) when is_list(fields) do
     %Macro.Env{module: caller_module} = __CALLER__
 
@@ -119,6 +239,39 @@ defmodule Bincode do
   end
 
   # Enum
+  @doc """
+  Declares a new enum. This macro generates a module for the enum, plus a struct for each variant
+  with serialization and deserialization methods according to the given fields.
+
+  ## Options
+
+  * `absolute` - When set to true, the given struct name is interpreted as the absolute module name.
+  When set to false, the given struct name is appended to the caller's module. Defaults to false.
+
+  ## Example
+
+      defmodule MyEnums do
+        import Bincode
+
+        declare_enum(IpAddr,
+          V4: [tuple: {:u8, :u8, :u8, :u8}],
+          V6: [addr: :string]
+        )
+      end
+
+      alias MyEnums.IpAddr
+
+      ip_v4 = %IpAddr.V4{tuple: {127, 0, 0, 1}}
+      {:ok, <<0, 0, 0, 0, 127, 0, 0, 1>>} = Bincode.serialize(ip_v4, IpAddr)
+
+      ip_v6 = %IpAddr.V6{addr: "::1"}
+      {:ok, <<1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 58, 58, 49>>} = Bincode.serialize(ip_v6, IpAddr)
+
+  It's also possible to call `serialize` and `deserialize` from the struct module directly.
+
+      {:ok, {%IpAddr.V4{tuple: {127, 0, 0, 1}}, ""}} = IpAddr.deserialize(<<0, 0, 0, 0, 127, 0, 0, 1>>)
+      {:ok, {%IpAddr.V6{addr: "::1"}, ""}} = IpAddr.deserialize(<<1, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 58, 58, 49>>)
+  """
   defmacro declare_enum(enum, variants, options \\ []) when is_list(variants) do
     %Macro.Env{module: caller_module} = __CALLER__
 
@@ -453,7 +606,34 @@ defmodule Bincode do
     end
   end
 
-  # Fallback
+  @doc """
+  Serializes the given `term` in binary representation according to the
+  given `type`.
+
+  Returns `{:ok, serialized_term}` when successful or `{:error, error_message}`
+  otherwise.
+
+  ## Examples
+
+      iex> Bincode.serialize(255, :u8)
+      {:ok, <<255>>}
+
+      iex> Bincode.serialize("Bincode", :string)
+      {:ok, <<7, 0, 0, 0, 0, 0, 0, 0, 66, 105, 110, 99, 111, 100, 101>>}
+
+      iex> Bincode.serialize({144, false}, {:u16, :bool})
+      {:ok, <<144, 0, 0>>}
+
+      iex> Bincode.serialize([1, 2, 3, 4], {:list, :u8})
+      {:ok, <<4, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4>>}
+
+      iex> Bincode.serialize(%{"some string key" => 429876423428}, {:map, {:string, :u64}})
+      {:ok, <<1, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 115, 111, 109, 101, 32, 115, 116, 114, 105, 110, 103, 32, 107, 101, 121, 4, 171, 161, 22, 100, 0, 0, 0>>}
+
+      iex> Bincode.serialize(%{}, :bool)
+      {:error, "Cannot serialize value %{} into type :bool"}
+  """
+  @spec serialize(term, bincode_type) :: {:ok, binary} | {:error, String.t()}
   def serialize(value, type) do
     if is_atom(type) and function_exported?(type, :serialize, 1) do
       apply(type, :serialize, [value])
@@ -462,6 +642,18 @@ defmodule Bincode do
     end
   end
 
+  @doc """
+  Same as `serialize/2` but raises an `ArgumentError` when the
+  given `value` cannot be encoded according to `type`.
+
+  ## Examples
+
+      iex> Bincode.serialize!([111], {:list, :u16})
+      <<1, 0, 0, 0, 0, 0, 0, 0, 111, 0>>
+
+      iex> Bincode.serialize!(<<>>, {:option, :bool})
+      ** (ArgumentError) Cannot serialize value "" into type :bool
+  """
   def serialize!(value, type) do
     case serialize(value, type) do
       {:ok, result} -> result
@@ -469,6 +661,33 @@ defmodule Bincode do
     end
   end
 
+  @doc """
+  Deserializes the given `binary` data into an Elixir term according to the
+  given `type`.
+
+  Returns `{:ok, {term, rest}}` when successful or `{:error, error_message}`
+  otherwise. The remaining binary data is returned.
+
+  ## Examples
+      iex> Bincode.deserialize(<<255>>, :u8)
+      {:ok, {255, ""}}
+
+      iex> Bincode.deserialize(<<7, 0, 0, 0, 0, 0, 0, 0, 66, 105, 110, 99, 111, 100, 101>>, :string)
+      {:ok, {"Bincode", ""}}
+
+      iex> Bincode.deserialize(<<144, 0, 0>>, {:u16, :bool})
+      {:ok, {{144, false}, ""}}
+
+      iex> Bincode.deserialize(<<4, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4>>, {:list, :u8})
+      {:ok, {[1, 2, 3, 4], ""}}
+
+      iex> Bincode.deserialize(<<1, 0, 0, 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 115, 111, 109, 101, 32, 115, 116, 114, 105, 110, 103, 32, 107, 101, 121, 4, 171, 161, 22, 100, 0, 0, 0>>, {:map, {:string, :u64}})
+      {:ok, {%{"some string key" => 429876423428}, ""}}
+
+      iex> Bincode.deserialize([], :bool)
+      {:error, "Cannot deserialize value [] into type :bool"}
+  """
+  @spec deserialize(binary, bincode_type) :: {:ok, {term, binary}} | {:error, String.t()}
   def deserialize(value, type) do
     if is_atom(type) and Code.ensure_loaded?(type) and function_exported?(type, :deserialize, 1) do
       apply(type, :deserialize, [value])
@@ -477,6 +696,18 @@ defmodule Bincode do
     end
   end
 
+  @doc """
+  Same as `deserialize/2` but raises an `ArgumentError` when the
+  given `value` cannot be encoded according to `type`.
+
+  ## Examples
+
+      iex> Bincode.deserialize!(<<1, 54, 23>>, {:option, :u16})
+      {5942, ""}
+
+      iex> Bincode.deserialize!(<<>>, {:list, :string})
+      ** (ArgumentError) Cannot deserialize value "" into type :list
+  """
   def deserialize!(value, type) do
     case deserialize(value, type) do
       {:ok, result} -> result
