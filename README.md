@@ -1,5 +1,7 @@
 # Bincode
 
+![](https://github.com/LeonardBesson/bincode/workflows/ci/badge.svg)
+
 Bincode allows you to share data between Elixir and Rust using
   Rust's [Bincode](https://github.com/servo/bincode) binary format.
 
