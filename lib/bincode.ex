@@ -34,7 +34,7 @@ defmodule Bincode do
   The endianness is little since that's the default used by Bincode.
   Tuples are implemented for a max size of 12 by default. That should be enough for
   most practical cases but if you need to serialize tuples with more elements you can
-  set `max_tuple_size` in the mix config, like so: `config :bincode, max_tuple_size: 23`.
+  set `max_tuple_size` in the mix config, like so: `config :bincode, max_tuple_size: 23`
 
   ## Examples
 
