@@ -72,8 +72,6 @@ Bincode allows you to share data between Elixir and Rust using
     )
   end
 
-  ...
-
   alias Packets.PacketSendMessage
 
   # Receive "data" from the network

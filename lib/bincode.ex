@@ -73,8 +73,6 @@ defmodule Bincode do
         )
       end
 
-      ...
-
       alias Packets.PacketSendMessage
 
       # Receive "data" from the network
