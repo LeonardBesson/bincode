@@ -17,7 +17,7 @@
   </a>
 </p>
 
-Bincode allows you to share data between Elixir and Rust using
+  Bincode allows you to share data between Elixir and Rust using
   Rust's [Bincode](https://github.com/servo/bincode) binary format.
 
   You can implement your custom serialization manually, but for most use cases
@@ -52,11 +52,14 @@ Bincode allows you to share data between Elixir and Rust using
   The endianness is little since that's the default used by Bincode.
   Tuples are implemented for a max size of 12 by default. That should be enough for
   most practical cases but if you need to serialize tuples with more elements you can
-  set `max_tuple_size` in the mix config, like so: `config :bincode, max_tuple_size: 23`
+  set `max_tuple_size` in the mix config, like so: 
+  ```elixir
+  config :bincode, max_tuple_size: 23
+  ```
 
   ## Examples
 
-  Consider the typical example were we want to send data structures across the network.
+  Consider the typical example where we want to send data structures across the network.
   Here with a Rust client and Elixir server:
 
   ```rust
@@ -79,7 +82,7 @@ Bincode allows you to share data between Elixir and Rust using
   }
   ```
 
-  On the Elixir side you can simply declare the same packet struct and deserialize the received data:
+  On the Elixir side you can simply declare the same packet struct and deserialize the received bytes:
 
   ```elixir
   defmodule Packets do
