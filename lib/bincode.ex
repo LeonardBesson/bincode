@@ -712,7 +712,7 @@ defmodule Bincode do
   """
   @spec deserialize(binary, bincode_type) :: {:ok, {term, binary}} | {:error, String.t()}
   def deserialize(value, type) do
-    if is_atom(type) and Code.ensure_loaded?(type) and function_exported?(type, :deserialize, 1) do
+    if is_atom(type) and function_exported?(type, :deserialize, 1) do
       apply(type, :deserialize, [value])
     else
       {:error, "Cannot deserialize value #{inspect(value)} into type #{inspect(type)}"}
