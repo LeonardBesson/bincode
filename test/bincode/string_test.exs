@@ -8,6 +8,14 @@ defmodule Bincode.StringTest do
   )
 
   test_serialization(
+    "variable encoded length string",
+    <<30, 118, 97, 114, 105, 97, 98, 108, 101, 32, 101, 110, 99, 111, 100, 101, 100, 32, 108, 101,
+      110, 103, 116, 104, 32, 115, 116, 114, 105, 110, 103>>,
+    :string,
+    varint: true
+  )
+
+  test_serialization(
     "你好世界",
     <<12, 0, 0, 0, 0, 0, 0, 0, 228, 189, 160, 229, 165, 189, 228, 184, 150, 231, 149, 140>>,
     :string

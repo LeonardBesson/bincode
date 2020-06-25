@@ -5,6 +5,8 @@ defmodule Bincode.SignedTest do
   test_serialization(0, <<0>>, :i8)
   test_serialization(-12, <<-12>>, :i8)
   test_serialization(127, <<127>>, :i8)
+  # Varint ignored for :i8
+  test_serialization(122, <<122>>, :i8, varint: true)
 
   test_serialization_fail("", "", :i8)
   test_serialization_fail(3.0, 23.0, :i8)

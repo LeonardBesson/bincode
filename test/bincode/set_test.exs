@@ -24,9 +24,17 @@ defmodule Bincode.SetTest do
   )
 
   test_serialization(
+    MapSet.new([[], [1, 3], [5, 5], [], [0, 66]]),
+    <<4, 0, 2, 0, 66, 2, 1, 3, 2, 5, 5>>,
+    {:set, {:list, :u8}},
+    varint: true
+  )
+
+  test_serialization(
     MapSet.new([MapSet.new([]), MapSet.new([1, 2, 3])]),
-    <<2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3>>,
-    {:set, {:set, :u8}}
+    <<2, 0, 3, 1, 2, 3>>,
+    {:set, {:set, :u8}},
+    varint: true
   )
 
   test_serialization_fail(1, 3, {:set, :string})

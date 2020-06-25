@@ -4,7 +4,7 @@ defmodule Bincode.OptionTest do
   test_serialization(nil, <<0>>, {:option, :string})
   test_serialization(nil, <<0>>, {:option, :u8})
   test_serialization(1, <<1, 1>>, {:option, :u8})
-  test_serialization(255, <<1, 255>>, {:option, :u8})
+  test_serialization(255, <<1, 255>>, {:option, :u8}, varint: true)
 
   test_serialization(
     "some string",

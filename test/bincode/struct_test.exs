@@ -28,15 +28,30 @@ defmodule Bincode.StructTest do
 
   test_struct_serialization(
     %StructWithEnum{
-      an_enum: %SomeEnum.VariantB{tuple: {87_653_213, 303_213.123873, "Variant B!"}}
+      an_enum: %SomeEnum.VariantB{tuple: {22, 303_213.123873, "Variant B!"}}
     },
-    <<1, 0, 0, 0, 93, 123, 57, 5, 79, 144, 216, 126, 180, 129, 18, 65, 10, 0, 0, 0, 0, 0, 0, 0,
-      86, 97, 114, 105, 97, 110, 116, 32, 66, 33>>
+    <<1, 0, 0, 0, 22, 0, 0, 0, 79, 144, 216, 126, 180, 129, 18, 65, 10, 0, 0, 0, 0, 0, 0, 0, 86,
+      97, 114, 105, 97, 110, 116, 32, 66, 33>>
+  )
+
+  test_struct_serialization(
+    %StructWithEnum{
+      an_enum: %SomeEnum.VariantB{tuple: {22, 303_213.123873, "Variant B!"}}
+    },
+    <<1, 22, 79, 144, 216, 126, 180, 129, 18, 65, 10, 86, 97, 114, 105, 97, 110, 116, 32, 66,
+      33>>,
+    varint: true
   )
 
   test_struct_serialization(
     %StructWithEnum{an_enum: %SomeEnum.VariantC{a_byte: 255, a_string: "Variant C"}},
     <<2, 0, 0, 0, 255, 9, 0, 0, 0, 0, 0, 0, 0, 86, 97, 114, 105, 97, 110, 116, 32, 67>>
+  )
+
+  test_struct_serialization(
+    %StructWithEnum{an_enum: %SomeEnum.VariantC{a_byte: 255, a_string: "Variant C"}},
+    <<2, 255, 9, 86, 97, 114, 105, 97, 110, 116, 32, 67>>,
+    varint: true
   )
 
   test_struct_serialization_fail(StructWithEnum, [], [])

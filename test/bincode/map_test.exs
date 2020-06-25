@@ -28,6 +28,14 @@ defmodule Bincode.MapTest do
     {:map, {:string, {:list, :string}}}
   )
 
+  test_serialization(
+    %{"map" => "with", "varint" => "length"},
+    <<2, 3, 109, 97, 112, 4, 119, 105, 116, 104, 6, 118, 97, 114, 105, 110, 116, 6, 108, 101, 110,
+      103, 116, 104>>,
+    {:map, {:string, :string}},
+    varint: true
+  )
+
   test_serialization_fail(1, 1, {:map, {:u8, :u32}})
   test_serialization_fail("", "", {:map, {:string, :bool}})
   test_serialization_fail([], [], {:map, {:u32, {:list, :string}}})

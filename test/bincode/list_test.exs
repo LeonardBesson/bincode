@@ -11,6 +11,13 @@ defmodule Bincode.ListTest do
   )
 
   test_serialization(
+    [11, 22, 33, 384_728_472],
+    <<4, 11, 22, 33, 252, 152, 125, 238, 22>>,
+    {:list, :u32},
+    varint: true
+  )
+
+  test_serialization(
     [true, true, false, true],
     <<4, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1>>,
     {:list, :bool}

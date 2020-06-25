@@ -21,8 +21,8 @@
   Rust's [Bincode](https://github.com/servo/bincode) binary format.
 
   You can implement your custom serialization manually, but for most use cases
-  you can simply declare the Rust structs and enums using `Bincode.declare_struct/3` and
-  `Bincode.declare_enum/3`
+  you can simply declare the Rust structs and enums using `Bincode.Structs.declare_struct/3` and
+  `Bincode.Structs.declare_enum/3`
 
   ## Supported types
 
@@ -47,7 +47,7 @@
   | `HashSet<u8>`          | `{:set, :u8}`             | `MapSet.t(non_neg_integer)`      |
 
   User defined types such as structs and enums can be nested, in this case the type is
-  the fully qualified module name. See documentation for `Bincode.declare_struct/3`.
+  the fully qualified module name. See documentation for `Bincode.Structs.declare_struct/3`.
 
   The endianness is little since that's the default used by Bincode.
   Tuples are implemented for a max size of 12 by default. That should be enough for
@@ -86,7 +86,7 @@
 
   ```elixir
   defmodule Packets do
-    import Bincode
+    import Bincode.Structs
 
     declare_struct(PacketSendMessage,
       from: :u64,

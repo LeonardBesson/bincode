@@ -2,7 +2,7 @@ defmodule Bincode.TestStructs do
   @moduledoc """
   Custom structs used during tests.
   """
-  import Bincode
+  import Bincode.Structs
 
   declare_enum(SomeEnum,
     VariantA: [],

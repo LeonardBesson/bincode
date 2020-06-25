@@ -5,6 +5,8 @@ defmodule Bincode.UnsignedTest do
   test_serialization(0, <<0>>, :u8)
   test_serialization(12, <<12>>, :u8)
   test_serialization(255, <<255>>, :u8)
+  # Varint ignored for :u8
+  test_serialization(254, <<254>>, :u8, varint: true)
 
   test_serialization_fail("", "", :u8)
   test_serialization_fail(3.0, 23.0, :u8)
